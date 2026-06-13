@@ -1,0 +1,136 @@
+/* ============================================================================
+   Botones (tema noxtr) — rediseño 2026-06
+   - Cada variante solo define --btn-bg / --btn-color; el resto lo hereda de .btn.
+   - Hover/active por filter:brightness → funciona con cualquier color de variante.
+   - Colores desde las variables del tema (style.css), con fallback.
+   - btn-light usa las vars --theme-surface* → se adapta solo al tema oscuro.
+   - OJO: .disabled NO lleva pointer-events:none (hay JS que escucha el click
+     sobre botones .disabled para avisar al usuario).
+   ========================================================================== */
+
+form .btn { min-width: 176px; }   /* compat: ancho mínimo histórico en formularios */
+
+.btn {
+    --btn-bg: var(--primary, #007bff);
+    --btn-color: #fff;
+
+    box-sizing: border-box;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45em;
+    padding: 8px 18px;
+    font-family: var(--font-family-sans-serif, 'Montserrat', sans-serif);
+    font-size: 0.95em;
+    font-weight: 500;
+    line-height: 1.35;
+    color: var(--btn-color);
+    background-color: var(--btn-bg);
+    border: 1px solid transparent;
+    border-radius: 9px;
+    cursor: pointer;
+    white-space: nowrap;
+    text-decoration: none;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    transition: filter 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease,
+                background-color 0.15s ease, color 0.15s ease, border-color 0.15s ease;
+}
+
+.btn:hover:not(.disabled):not(:disabled) {
+    filter: brightness(1.08);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+.btn:active:not(.disabled):not(:disabled) {
+    filter: brightness(0.96);
+    transform: translateY(0);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+}
+.btn:focus-visible {
+    outline: 2px solid var(--btn-bg);
+    outline-offset: 2px;
+}
+
+.btn .fa { color: inherit; }
+
+/* ------------------------------ Variantes ------------------------------ */
+
+.btn.btn-primary   { --btn-bg: var(--primary, #007bff); }
+.btn.btn-secondary,
+.btn.secondary     { --btn-bg: var(--secondary, #6c757d); }
+.btn.btn-danger    { --btn-bg: var(--danger, #dc3545); }
+.btn.btn-success,
+.btn.btn-ok        { --btn-bg: var(--success, #28a745); }
+.btn.btn-info      { --btn-bg: var(--cyan, #17a2b8); }
+.btn.btn-dark      { --btn-bg: var(--gray-dark, #343a40); }
+.btn.btn-reset     { --btn-bg: var(--gray, #6c757d); }
+.btn.btn-link-o    { --btn-bg: #3a84de; }
+
+.btn.btn-warning {
+    --btn-bg: var(--warning, #ffc107);
+    --btn-color: #3a2d00;
+}
+
+/* Botón "claro": superficie del tema → correcto también en tema oscuro */
+.btn.btn-light {
+    --btn-bg: var(--theme-surface, #f8f9fa);
+    --btn-color: var(--theme-text, #333);
+    border-color: var(--theme-surface-border, #d8dee6);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.07);
+}
+
+/* Outline/ghost: transparente con borde; se rellena al hover */
+.btn.btn-outline {
+    background-color: transparent;
+    color: var(--btn-bg);
+    border-color: var(--btn-bg);
+    box-shadow: none;
+}
+.btn.btn-outline:hover:not(.disabled):not(:disabled) {
+    background-color: var(--btn-bg);
+    color: var(--btn-color, #fff);
+    filter: none;
+}
+
+/* Botón-enlace (también se usa como pestaña: subrayado + .active) */
+.btn.btn-link {
+    background-color: transparent;
+    color: var(--link, #2077a2);
+    border: 0;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
+    padding: 7px 10px;
+    box-shadow: none;
+}
+.btn.btn-link:hover:not(.disabled):not(:disabled) {
+    color: var(--link-hover, #e8576c);
+    border-bottom-color: currentColor;
+    filter: none;
+    transform: none;
+    box-shadow: none;
+}
+.btn-link.active {
+    border-bottom-color: var(--primary, #0089c7);
+    color: var(--theme-text, #222);
+    font-weight: 600;
+}
+
+/* ------------------------------- Tamaños ------------------------------- */
+
+.btn.btn-small { font-size: 0.8em;  padding: 4px 10px;  border-radius: 7px;  gap: 0.35em; }
+.btn.btn-large { font-size: 1.15em; padding: 12px 24px; border-radius: 12px; }
+.btn.btn-block { display: flex; width: 100%; }
+
+/* ------------------------------ Deshabilitado -------------------------- */
+
+.btn.disabled,
+.btn:disabled {
+    --btn-bg: #c3cad3;
+    --btn-color: #5d6671;
+    cursor: not-allowed;
+    box-shadow: none;
+    filter: none;
+    transform: none;
+}

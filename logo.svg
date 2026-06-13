@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" fill="none" stroke="#8B5CF6" stroke-width="14" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Noxtr Signer: plumín firmando un trazo (estilo línea, como los iconos feather del módulo) -->
+    <g transform="rotate(25 88 176)">
+        <path d="M88 176 C78 156 62 126 62 98 C62 72 72 56 88 56 C104 56 114 72 114 98 C114 126 98 156 88 176 Z"/>
+        <circle cx="88" cy="100" r="9"/>
+        <path d="M88 109 L88 160"/>
+    </g>
+    <path d="M88 176 C102 200 134 210 160 201 C186 192 204 188 224 194"/>
+</svg>

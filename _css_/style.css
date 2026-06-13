@@ -1,0 +1,233 @@
+/* Theme signer — Noxtr Signer (signer.noxtr.net)
+   Acento púrpura #8B5CF6, alineado con _modules_/signer/style.css.
+   Sin fuentes externas ni CDNs (regla de oro del PLAN.md del módulo). */
+
+*{
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html {
+    box-sizing: border-box;
+    -webkit-text-size-adjust: 100%;
+    -ms-text-size-adjust: 100%;
+}
+
+*, *:before, *:after {
+    box-sizing: inherit;
+}
+
+:root {
+    /* paleta de estado (la usan los css del framework: botones, mensajes...) */
+    --blue: #007bff;
+    --indigo: #6610f2;
+    --purple: #8B5CF6;
+    --pink: #e83e8c;
+    --red: #dc3545;
+    --orange: #fd7e14;
+    --yellow: #ffc107;
+    --green: #28a745;
+    --teal: #20c997;
+    --cyan: #17a2b8;
+    --white: #fff;
+    --gray: #6c757d;
+    --gray-dark: #343a40;
+    --primary: #8B5CF6;
+    --secondary: #6c757d;
+    --success: #28a745;
+    --info: #17a2b8;
+    --warning: #ffc107;
+    --danger: #dc3545;
+    --error: #a4000f;
+    --light: #f8f9fa;
+    --dark: #343a40;
+    --breakpoint-xs: 0;
+    --breakpoint-sm: 576px;
+    --breakpoint-md: 768px;
+    --breakpoint-lg: 992px;
+    --breakpoint-xl: 1200px;
+
+    /* identidad del theme */
+    --accent: #8B5CF6;
+    --accent-dark: #6d45cc;
+    --accent-soft: rgba(139, 92, 246, 0.08);
+    --accent-border: rgba(139, 92, 246, 0.3);
+    --ink: #2c2735;
+    --bg: #f3f1f9;
+
+    --font-family-theme: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
+    --font-family-sans-serif: var(--font-family-theme);
+    --font-family-monospace: Consolas, SFMono-Regular, Menlo, Monaco, "Liberation Mono", "Courier New", monospace;
+    --font-weight-default: 400;
+    --font-size-default: 15px;
+    --link: var(--accent-dark);
+    --link-hover: var(--accent);
+}
+
+body {
+    min-height: 100vh;
+    font-family: var(--font-family-theme);
+    font-weight: var(--font-weight-default);
+    font-size: var(--font-size-default);
+    display: grid;
+    grid-template-areas:
+    "header"
+    "main"
+    "footer";
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr auto;
+    color: var(--ink);
+    background-color: var(--bg);
+    max-width: 980px;
+    margin: 40px auto;
+    border-radius: 12px;
+    box-shadow: 0 0 0 1px var(--accent-border), 0 8px 30px rgba(60, 40, 120, 0.12);
+}
+
+header {
+    grid-area: header;
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    flex-wrap: wrap;
+    padding: 12px 24px;
+    background-color: #fff;
+    border-bottom: 1px solid var(--accent-border);
+    border-radius: 12px 12px 0 0;
+}
+
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+}
+.brand:hover { text-decoration: none; }
+.brand-logo { height: 46px; width: 46px; }
+.brand-name {
+    font-size: 1.45em;
+    letter-spacing: 0.04em;
+    color: var(--ink);
+    font-weight: 300;
+}
+.brand-name b { color: var(--accent); font-weight: 700; }
+
+header > ul { margin-left: auto; }
+
+
+main {
+    position: relative;
+    grid-area: main;
+    padding: 1.5rem 2rem;
+    background-color: white;
+}
+
+footer {
+    grid-area: footer;
+    background-color: var(--accent-soft);
+    padding: 1rem;
+    text-align: center;
+    border-top: 1px solid var(--accent-border);
+    border-radius: 0 0 12px 12px;
+    font-size: 0.9em;
+}
+footer p { text-align: center; }
+
+.footer-brand {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    opacity: 0.75;
+    margin-top: 6px;
+}
+.footer-brand img { height: 26px; width: 26px; }
+.footer-brand a { color: var(--link); }
+
+/* Responsive */
+@media (max-width: 768px) {
+    body {
+        max-width: none;
+        margin: 0;
+        border-radius: 0;
+        box-shadow: none;
+    }
+    header { border-radius: 0; justify-content: center; }
+    header > ul { margin-left: 0; }
+    footer { border-radius: 0; }
+    main { padding: 1rem; }
+}
+
+img{max-width: 100%;height: auto;display: block;}
+a{color: var(--link);text-decoration: none;transition: all 0.3s ease;}
+a:active,
+a:hover{color: var(--link-hover);text-decoration: underline;}
+h1,h2,h3,h4,h5,h6{ margin-top: 1rem; margin-bottom: 1rem; }
+button{background: none;border: none;cursor: pointer;}
+ul,ol{list-style: none;padding-left: 0;}
+p {text-wrap: pretty;margin-block: 1lh;}
+
+/* Menús (los pinta la clase Menu del framework) */
+.menu-simple ul{list-style-type:none;margin:0;padding:0}
+.menu-simple ul li{display:inline-block;padding: 4px 10px;position:relative;text-align:left;}
+.menu-simple ul li.has-childs::after {content: " +"}
+.menu-simple>ul>li:first-child{padding-left: 0px;}
+.menu-simple>ul>li{padding:4px 0;margin:0 20px;}
+.menu-simple ul li>ul{display:none;}
+.menu-simple ul li:hover>ul{position:absolute;display:block;z-index:5;top:20px;left:0px;border:1px solid var(--accent-border);padding:10px;background-color:white;min-width:140px;border-radius:6px;}
+.menu-simple ul li:hover>ul li{display:block;}
+.menu-simple li{text-wrap-mode: nowrap;}
+
+/* HOVER EFFECT 4 - from Nastasia https://codepen.io/nastasia/pen/WwQaed */
+.effect-4>ul>li>a:before {  content: "[";  left: -5px;}
+.effect-4>ul>li>a:after {  content: "]";  right: -5px;}
+.effect-4>ul>li>a:before,
+.effect-4>ul>li>a:after {  position: absolute;  opacity: 0;  color: var(--accent);  top: 4px;  transition: all .5s;}
+.effect-4>ul>li>a:hover:before,
+.effect-4>ul>li>a:hover:after {  opacity: 0.7;}
+.effect-4>ul>li>a:hover:before {  left: -15px;}
+.effect-4>ul>li>a:hover:after {  right: -15px;}
+
+/* Barra superior de admin (la pinta _themes_/default/index.top.php) */
+#top{display:block;opacity:0.15;top:0px;left:0px;color:white;position:fixed;padding:0px 16px;width:100%;border-radius:0;background-color:rgb(186 186 192 / 34%);backdrop-filter:saturate(250%) blur(20px);-webkit-backdrop-filter:saturate(250%) blur(20px);z-index:7;height:24px;}
+#top:hover{opacity:0.95;}
+#top input{border:1px solid #f8f8f8;}
+#top #top-links{position:absolute;top:0px;right:6px;}
+#top #top-links a{color:#282d26;display:inline-block;margin:4px 6px 0 6px;text-transform:uppercase;font-size:10px;text-decoration: none;}
+#top:after{margin-left:-50%;left:50%;content:"";display:block;position:absolute;top:100%;width:100%;height:1px;z-index:1;background-color:rgba(255,255,255,0.15);}
+#top .inner{line-height:18px;}
+#top .top-inner{justify-content:space-between;align-items:right;margin-left:auto;margin-right:auto;width:100%;max-width:980px;text-align:right;}
+#top #search {border: 1px solid gray; display: none; background-color: white;}
+#top #search i {display: inline-block;font: normal normal normal 14px/1 FontAwesome;font-size: inherit;text-rendering: auto;-webkit-font-smoothing: antialiased;-moz-osx-font-smoothing: grayscale;color: #777; margin-left: 6px;margin-right: 3px;}
+#top #search input {border: 1px solid #f8f8f8;outline:none;}
+
+.float-left{float:left;margin: 10px 10px 5px 0;}
+.float-right{float:right;margin: 10px 0 5px 10px;}
+.float-center{display:block;float:none;margin: 10px auto 5px auto;}
+
+/* Módulos de admin (control_panel, dbadmin...) siguen disponibles hasta el
+   recorte de Fase 4: les hace falta el layout con aside */
+@media screen and (min-width: 1200px){
+    .body-dbadmin .inner,
+    .body-erp .inner,
+    .body-control_panel .inner{
+        width:auto;
+    }
+}
+
+
+/* --- Selector de idioma (v0.7.0): links ES/EN en el header --- */
+
+.lang-switch { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+.lang-switch a {
+    text-decoration: none;
+    font-size: .82em;
+    font-weight: 600;
+    letter-spacing: .04em;
+    opacity: .55;
+    color: inherit;
+}
+.lang-switch a:hover { opacity: 1; }
+.lang-switch a.lang-active { opacity: 1; color: var(--primary, #8B5CF6); }
+
