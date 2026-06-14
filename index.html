@@ -1,21 +1,21 @@
 <!DOCTYPE html>
-<html lang="es"  translate="no">
+<html lang="en"  translate="no">
     <head>
 
         <meta charset="utf-8">
 
         <!--
-            Noxtr Signer — 100% estático (v0.7.0). Sin PHP, sin BD, sin backend:
-            este index.html es el antiguo theme+módulo "signer" de ExtFW Lite ya
-            ensamblado. Funciona servido por nginx o abierto con doble clic (file://).
+            Noxtr Signer — 100% static (v0.7.0). No PHP, no DB, no backend:
+            this index.html is the old ExtFW Lite "signer" theme+module, already
+            assembled. Works served by nginx or opened with a double-click (file://).
 
-            CSP en meta: viaja con el archivo. frame-ancestors/X-Frame-Options no
-            funcionan en meta — ponerlos en el bloque server de nginx (ver README).
-            Los sha256 autorizan EXACTAMENTE los dos scripts inline de esta instal:
-            si se edita un inline, recalcular su hash (shasum -a 256 del contenido
-            entre las etiquetas) o la página deja de arrancar.
+            CSP in meta: travels with the file. frame-ancestors/X-Frame-Options do
+            not work in meta — set them in the nginx server block (see README).
+            The sha256 hashes authorize EXACTLY the two inline scripts of this install:
+            if you edit an inline script, recompute its hash (shasum -a 256 of the
+            content between the tags) or the page stops booting.
         -->
-        <meta http-equiv="Content-Security-Policy" content="default-src 'self' file:; script-src 'self' file: 'sha256-RMhjWdeD9niAEVD34I/9J+4uNEFiiAUDYLGgaDrNkrk=' 'sha256-AF6A4hYrseAf8b6v0S2Vi8xtcB7W0asmyzQSRmmW5Zc='; connect-src 'self' wss:; img-src 'self' file: data: blob:; style-src 'self' file: 'unsafe-inline'; font-src 'self' file: data:; media-src 'self'; worker-src 'self' blob:; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+        <meta http-equiv="Content-Security-Policy" content="default-src 'self' file:; script-src 'self' file: 'sha256-VbhQzNJgBQG5N1hRCmiMtTBx3eUHQ8Pkxl7fRnR9RUs=' 'sha256-4B+jK9uzReR3l90y86XSklMkYy2TXJPCD4X5kZR+7s0='; connect-src 'self' wss:; img-src 'self' file: data: blob:; style-src 'self' file: 'unsafe-inline'; font-src 'self' file: data:; media-src 'self'; worker-src 'self' blob:; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
 
         <title>Noxtr Signer</title>
 
@@ -60,13 +60,13 @@
         <link rel="icon" type="image/svg+xml" href="logo.svg">
 
         <script>
-            // Idioma (antes $_SESSION['lang'] en PHP): ?lang= > localStorage > navegador.
-            // Whitelist estricta: _LANG_ acaba en un document.write de <script src>,
-            // así que jamás puede valer nada fuera de _LANGS_.
+            // Language (formerly $_SESSION['lang'] in PHP): ?lang= > localStorage > browser.
+            // Strict whitelist: _LANG_ ends up in a document.write of <script src>,
+            // so it can never hold anything outside _LANGS_.
             var console_log = false;
             var _MODULE_       = 'signer';
             var _LANGS_        = ['es','en','lt','de','it','fr','ru','zh','ja','kl'];
-            var _DEFAULT_LANG_ = 'es';
+            var _DEFAULT_LANG_ = 'en';
             var _LANG_ = (function(){
                 var pick = null;
                 try { pick = new URLSearchParams(location.search).get('lang'); } catch(e) {}
@@ -96,7 +96,7 @@
 
 <div class="signer-wrap">
 
-    <h1 class="signer-title"><span class="sgn-i sgn-i-edit"></span> Noxtr Signer <span class="signer-badge">beta</span></h1>
+    <h1 class="signer-title">Noxtr Signer <span class="signer-badge">beta</span></h1>
     <p class="signer-intro" data-i18n="SIGNER_INTRO">Custodia tu clave Nostr (nsec) cifrada en este navegador y firma eventos para otras apps vía NIP-46 (Nostr Connect). Tu clave nunca sale de esta página.</p>
 
     <details class="signer-help">
@@ -108,10 +108,11 @@
             <li><b data-i18n="SIGNER_HELP_4T">Aprueba las firmas.</b> <span data-i18n="SIGNER_HELP_4">Cuando la app quiera publicar algo, aquí aparecerá un aviso con el contenido. Puedes firmar una vez, rechazar, o "recordar este tipo" para esa app (los permisos recordados se borran al recargar la página).</span></li>
             <li><b data-i18n="SIGNER_HELP_5T">Importante: deja esta pestaña abierta.</b> <span data-i18n="SIGNER_HELP_5">El firmador solo atiende mientras la página está abierta y desbloqueada. Si la cierras o pulsas "Bloquear", las apps conectadas dejarán de poder firmar hasta que vuelvas.</span></li>
             <li><b data-i18n="SIGNER_HELP_6T">Controla.</b> <span data-i18n="SIGNER_HELP_6">En "Apps conectadas" puedes renombrar una app, revocar sus permisos o desconectarla; en "Actividad" ves todo lo que se ha firmado o rechazado.</span></li>
+            <li><b data-i18n="SIGNER_HELP_7T">Recomendado: úsalo en el móvil, como app.</b> <span data-i18n="SIGNER_HELP_7">Lo más cómodo: abre signer.noxtr.net en el móvil y usa "Añadir a pantalla de inicio". Se instala como una app, a pantalla completa y siempre a mano; con "Recordar en este dispositivo" tu identidad queda lista al abrir. Para la mayoría es más práctico que llevar la nsec en un USB.</span></li>
         </ol>
     </details>
 
-    <!-- Estado: sin identidad → crear o importar -->
+    <!-- State: no identity → create or import -->
     <div id="signer-setup" class="signer-panel" style="display:none">
         <h2 data-i18n="SIGNER_SETUP_TITLE">Crear o importar tu identidad</h2>
         <label data-i18n="SIGNER_SETUP_NSEC2">Clave privada (nsec)</label>
@@ -152,13 +153,13 @@
             <label data-i18n="SIGNER_SETUP_PASS2">Repite la contraseña</label>
             <input type="password" id="setup-pass2" autocomplete="new-password">
         </div>
-        <!-- Panel dinámico: signer.js lo rellena según la combinación de casillas (renderStoreInfo) -->
+        <!-- Dynamic panel: signer.js fills it based on the checkbox combination (renderStoreInfo) -->
         <div id="setup-store-info" class="signer-store-info"></div>
         <button id="btn-setup-save" class="btn btn-primary" data-i18n="SIGNER_SETUP_SAVE">Guardar identidad</button>
         <p class="signer-hint" data-i18n="SIGNER_SETUP_HINT2">La nsec se guarda siempre cifrada en este navegador. Con el desbloqueo automático se cifra con una clave interna del navegador (no extraíble): quien use este perfil del navegador podrá firmar, como una sesión iniciada. La contraseña es una capa extra (recomendada en equipos compartidos) y se pide siempre para mostrar la nsec. Guarda una copia de la nsec en lugar seguro.</p>
     </div>
 
-    <!-- Estado: identidad guardada pero bloqueada -->
+    <!-- State: identity saved but locked -->
     <div id="signer-locked" class="signer-panel" style="display:none">
         <h2><span class="sgn-i sgn-i-lock"></span> <span data-i18n="SIGNER_LOCKED_TITLE">Identidad bloqueada</span></h2>
         <div id="locked-npub" class="signer-npub"></div>
@@ -170,7 +171,7 @@
         <p class="signer-hint"><a href="#" id="btn-forget-locked" class="signer-danger-link" data-i18n="SIGNER_FORGET">Eliminar esta identidad de este navegador</a></p>
     </div>
 
-    <!-- Estado: desbloqueado / operativo -->
+    <!-- State: unlocked / operational -->
     <div id="signer-main" style="display:none">
 
         <div class="signer-panel">
@@ -195,7 +196,7 @@
                 <button id="btn-pair-scan" class="btn"><span class="sgn-i sgn-i-camera"></span> <span data-i18n="SIGNER_SCAN_QR">Escanear QR</span></button>
             </div>
             <div id="pair-qr-scanner" style="display:none">
-                <!-- Escáner QR con cámara (Html5Qrcode inyecta el video aquí) -->
+                <!-- Camera QR scanner (Html5Qrcode injects the video here) -->
                 <div id="pair-scan-video"></div>
                 <p id="pair-scan-status" class="signer-hint"></p>
                 <button id="btn-pair-scan-stop" class="btn" data-i18n="SIGNER_SCAN_STOP">Cerrar cámara</button>
@@ -222,7 +223,7 @@
 
     <p class="signer-warning"><span class="sgn-i sgn-i-alert"></span> <span data-i18n="SIGNER_BETA_WARNING">Versión beta: el firmador ya corre aislado en su propio dominio, pero sigue en desarrollo. Guarda siempre una copia de seguridad de tu clave.</span></p>
 
-    <!-- Banner FLOSS + propinas (como en el módulo noxtr); la dirección lightning vive en relays.js -->
+    <!-- FLOSS + tips banner (as in the noxtr module); the lightning address lives in relays.js -->
     <div class="signer-donate">
         <p data-i18n="SIGNER_FLOSS">noxtr signer es software libre y de código abierto, y siempre lo será. Si te resulta útil, puedes apoyar su desarrollo con una propina en sats.</p>
         <button id="btn-donate" class="btn btn-primary"><span class="sgn-i sgn-i-zap"></span> <span data-i18n="SIGNER_SUPPORT">Apoya este desarrollo</span></button>
@@ -239,34 +240,34 @@
             </div>
         </footer>
 
-        <!-- wquery + helpers del framework (antes _includes_/footer.php) -->
+        <!-- wquery + framework helpers (formerly _includes_/footer.php) -->
         <script src="_js_/wquery/wquery.js"></script>
         <script src="_js_/wquery/wquery.draggable.js"></script>
         <script src="_js_/wquery/wquery.dialog.js"></script>
         <script src="_js_/wquery/wquery.dialog.overrides.js"></script>
         <script src="_js_/script.js"></script>
 
-        <!-- Cripto self-hosted (antes _modules_/signer/head.php; regla de oro: nada de CDNs) -->
+        <!-- Self-hosted crypto (formerly _modules_/signer/head.php; golden rule: no CDNs) -->
         <script src="_lib_/bitcoin/noble-secp256k1-1.2.14.js"></script>
         <script src="_lib_/bitcoin/noble-ciphers.min.js"></script>
         <script src="_lib_/bitcoin/buffer-6.0.3.js"></script>
         <script src="_lib_/bitcoin/bip39-3.0.4.js"></script>
 
-        <!-- QR: generar (bunker://) y escanear (nostrconnect://) -->
+        <!-- QR: generate (bunker://) and scan (nostrconnect://) -->
         <script src="_lib_/qrcode/qrcode.min.js"></script>
         <script src="_lib_/jsqr/jsqr.min.js"></script>
         <script src="_lib_/jsqr/html5qrcode-compat.js"></script>
 
-        <!-- Relays del bunker, editables por el usuario (debe ir ANTES de signer.js) -->
+        <!-- Bunker relays, user-editable (must load BEFORE signer.js) -->
         <script src="relays.js"></script>
 
-        <!-- El módulo signer entero (antes _modules_/signer/script.js) -->
+        <!-- The whole signer module (formerly _modules_/signer/script.js) -->
         <script src="_js_/signer.js"></script>
         <script src="_js_/pwa.js"></script>
 
         <script>
-            // i18n del DOM (antes lo resolvía PHP t() al renderizar) + arranque.
-            // Solo escribe textContent/placeholder/title con valores de _i18n_/*.js: nunca HTML.
+            // DOM i18n (formerly resolved by PHP t() at render time) + boot.
+            // Only writes textContent/placeholder/title from _i18n_/*.js values: never HTML.
             (function(){
                 document.documentElement.lang = _LANG_;
                 var D = window.SGN_DOM || {};

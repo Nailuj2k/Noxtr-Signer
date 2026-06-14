@@ -134,6 +134,8 @@ var SGN_DOM = {
     SIGNER_HELP_5: 'The signer only works while the page is open and unlocked. If you close it or press "Lock", connected apps will not be able to sign until you come back.',
     SIGNER_HELP_6T: 'Stay in control.',
     SIGNER_HELP_6: 'In "Connected apps" you can rename an app, revoke its permissions or disconnect it; in "Activity" you can see everything that has been signed or rejected.',
+    SIGNER_HELP_7T: 'Recommended: use it on mobile, as an app.',
+    SIGNER_HELP_7: 'The handiest way: open signer.noxtr.net on your phone and use "Add to Home Screen". It installs like an app, full-screen and always within reach; with "Remember on this device" your identity is ready as soon as you open it. For most people this is more practical than carrying the nsec on a USB stick.',
     SIGNER_SETUP_TITLE: 'Create or import your identity',
     SIGNER_SETUP_NSEC2: 'Private key (nsec)',
     SIGNER_SETUP_NSEC_PH: 'nsec1... (generate a new one or import it with the buttons)',

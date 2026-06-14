@@ -1,82 +1,101 @@
 # Noxtr Signer
 
-Repositorio: https://github.com/Nailuj2k/Noxtr-Signer
+Repo: https://github.com/Nailuj2k/Noxtr-Signer
 
-Firmador NIP-46. 
+NIP-46 signer (bunker). Plain web — no Node, no build. Works served by any web
+server **or opened with a double-click** (`file://`), so every script is classic
+(no ES modules, no `fetch()` of local assets).
 
-Funciona servido por cualquier webserver **o abierto con doble clic** (`file://`) — por eso
-todos los scripts son clásicos (nada de módulos ES ni `fetch()` de assets locales).
-Es una simple web con javascript, no necesita nodejs ni node_modules, ni ná raro ni modelno.
+## English
 
-## Estructura
+**Layout:** `index.html` (single page, CSP in meta, i18n via `data-i18n`) ·
+`_css_/`, `_i18n_/` (es/en), `_js_/` (wquery, script.js, signer.js) ·
+`_lib_/` (self-hosted noble, buffer, bip39, qrcode, jsqr — no CDNs) · `_images_/`.
 
+**Where the nsec lives** (user picks at setup, two independent checkboxes;
+`renderStoreInfo` in `_js_/signer.js`): *Browser* (IndexedDB, with auto-unlock /
+password) · *Downloaded file* (USB portability, re-enter via "Load JSON backup";
+with password = AES-GCM + PBKDF2 wrapper, without = nsec in PLAINTEXT, explicit
+confirm, file named `signer-nsec-PLAIN-...json`) · *Both* · *Neither* =
+session-only (in memory while the tab is open, "Lock" forgets it; for shared
+machines).
+
+**Recommended — install it on mobile (as an app):** open `signer.noxtr.net` on
+your phone and use **"Add to Home Screen"**. It runs full-screen like a native
+app, always within reach, and with *Browser* + *Remember on this device* the
+identity is ready the moment you open it. For most people this is handier than
+carrying the nsec on a USB stick.
+
+**Relays:** `relays.js` (root) sets `SIGNER_RELAYS`, user-editable (`wss://` only;
+falls back to defaults if missing/invalid). These are the bunker's own relays;
+app relays arrive in their URI.
+
+**Integration:** any Nostr Connect client works. Pairing either way —
+client-started `nostrconnect://...` pasted/scanned into "Connect an app", or
+signer-started `bunker://...` (one-time secret) copied to the client. After
+`connect`, kind 24133 requests (NIP-44 encrypted) flow over the relay. Methods:
+`connect`, `ping`, `get_public_key`, `get_relays`, `sign_event`,
+`nip44_encrypt/decrypt`, `nip04_encrypt/decrypt`. Requires the signer tab open
+and unlocked.
+
+**Copy verification:** the page runs fully downloaded. To distribute with a
+guarantee, publish `shasum -a 256` of the tree on https://noxtr.net for users to
+check locally.
+
+### CSP (read before touching the inline scripts!)
+
+The CSP rides in a `<meta>` inside `index.html` (applies downloaded too). The two
+`sha256-...` in `script-src` authorize EXACTLY the two inline scripts. If you edit
+either, recompute its hash (exact content between `<script>` and `</script>`,
+spaces included):
+
+```sh
+perl -0777 -ne 'while (/<script>(.*?)<\/script>/gs) { open(F,">","/tmp/i".(++$i).".js"); print F $1 }' index.html
+for f in /tmp/i1.js /tmp/i2.js; do echo "sha256-$(openssl dgst -sha256 -binary $f | base64)"; done
 ```
-index.html        página única (CSP en meta, i18n vía data-i18n)
-logo.svg          marca + favicon   // Oki, es un logo pestoso. Pero estamos en ello.
-_css_/            reset, style, style.buttons (ex-theme) + signer.css (ex-módulo)
-_i18n_/es.js,en.js  todas las cadenas (constantes str_* + diccionario SGN_DOM)
-_js_/             wquery (núcleo+draggable+dialog+overrides), script.js (helpers t()...), signer.js (el módulo entero)
-_lib_/            noble-secp256k1, noble-ciphers, buffer, bip39, qrcode, jsqr, font-awesome (self-hosted, nada de CDNs)
-_images_/         feather/ y feather_white/ (iconos vía CSS mask)
-```
 
-## Dónde se guarda la nsec (elección del usuario, v0.7.0)
+## Español
 
-En el setup hay dos casillas independientes; el panel `#setup-store-info`
-explica la combinación elegida (renderStoreInfo en `_js_/signer.js`):
+**Estructura:** `index.html` (página única, CSP en meta, i18n vía `data-i18n`) ·
+`_css_/`, `_i18n_/` (es/en), `_js_/` (wquery, script.js, signer.js) ·
+`_lib_/` (noble, buffer, bip39, qrcode, jsqr self-hosted — sin CDNs) · `_images_/`.
 
-- **Navegador** (IndexedDB, como siempre) — con sus subopciones de
-  desbloqueo automático y contraseña.
-- **Archivo que se descarga** — para llevarla en un USB y re-entrar con
-  "Cargar backup JSON". Con contraseña: wrapper cifrado (AES-GCM + PBKDF2,
-  el mismo de "Exportar backup"). Sin contraseña: la nsec va EN CLARO
-  (libertad del usuario, con confirmación expresa; el archivo se llama
-  `signer-nsec-PLAIN-...json` pa que se note).
-- **Ambas** — cómodo + portable + copia de seguridad.
-- **Ninguna** = modo solo sesión: la nsec vive en memoria mientras la pestaña
-  esté abierta (`record.sessionOnly`); "Bloquear" equivale a olvidar y no
-  queda rastro en el equipo. Pensado para equipos ajenos.
+**Dónde se guarda la nsec** (lo elige el usuario en el setup, dos casillas
+independientes; `renderStoreInfo` en `_js_/signer.js`): *Navegador* (IndexedDB,
+con desbloqueo automático / contraseña) · *Archivo descargado* (portable en USB,
+re-entrar con "Cargar backup JSON"; con contraseña = wrapper AES-GCM + PBKDF2,
+sin contraseña = nsec EN CLARO, confirmación expresa, archivo
+`signer-nsec-PLAIN-...json`) · *Ambas* · *Ninguna* = solo sesión (en memoria
+mientras la pestaña esté abierta, "Bloquear" la olvida; para equipos ajenos).
 
-## Relays
+**Recomendado — instálalo en el móvil (como app):** abre `signer.noxtr.net` en el
+móvil y usa **"Añadir a pantalla de inicio"**. Funciona a pantalla completa como
+una app nativa, siempre a mano, y con *Navegador* + *Recordar en este dispositivo*
+la identidad queda lista al abrir. Para la mayoría es más práctico que llevar la
+nsec en un USB.
 
-`relays.js` (raíz) define `SIGNER_RELAYS` y **es editable por el usuario**
-(solo `wss://`; si falta o es inválido, `signer.js` usa sus defaults).
-Son los relays propios del bunker; los de las apps llegan en su URI.
+**Relays:** `relays.js` (raíz) define `SIGNER_RELAYS`, editable por el usuario
+(solo `wss://`; usa defaults si falta o es inválido). Son los relays propios del
+bunker; los de las apps llegan en su URI.
 
+**Integración:** lo usa cualquier cliente con Nostr Connect. Pairing en ambos
+sentidos — `nostrconnect://...` del cliente pegado/escaneado en "Conectar una
+app", o `bunker://...` (secret de un solo uso) del signer copiado al cliente.
+Tras el `connect`, las peticiones kind 24133 (cifradas NIP-44) van por el relay.
+Métodos: `connect`, `ping`, `get_public_key`, `get_relays`, `sign_event`,
+`nip44_encrypt/decrypt`, `nip04_encrypt/decrypt`. Requiere la pestaña del signer
+abierta y desbloqueada.
 
-## Cómo integrar Noxtr Signer en un cliente
+**Verificación de copias:** la página funciona descargada. Para distribuirla con
+garantía, publicar el `shasum -a 256` del árbol en https://noxtr.net y que el
+usuario lo compruebe en local.
 
-Noxtr Signer es un bunker NIP-46: cualquier cliente con Nostr Connect lo usa
-sin que el signer tenga que saber nada del cliente. Dos flujos de pairing:
+### CSP (¡leer antes de tocar los inline!)
 
-1. **Inicia el cliente** (noxtr: Login → Nostr Connect): genera una URI
-   `nostrconnect://<client-pubkey>?relay=...&secret=...` que el usuario pega
-   (o escanea con la cámara) en "Conectar una app" del signer.
-2. **Inicia el signer**: el usuario copia la URI `bunker://<pubkey>?relay=...&secret=...`
-   del panel (o su QR) al cliente. El secret es de un solo uso.
-
-Tras el `connect`, el cliente manda peticiones kind 24133 (cifradas NIP-44)
-por el relay y el signer responde. Métodos: `connect`, `ping`,
-`get_public_key`, `get_relays`, `sign_event`, `nip44_encrypt/decrypt`,
-`nip04_encrypt/decrypt`. Requisitos del lado cliente: implementar NIP-46
-(noxtr ya lo tiene en su clase `Nip46`); del lado usuario: la pestaña del
-signer abierta y desbloqueada.
-
-
-## Verificación de copias (modo descargable)
-
-La página entera funciona descargada. Para distribuirla con garantía:
-publicar el `shasum -a 256` del árbol (o del futuro `signer.html`
-autocontenido) en https://noxtr.net y que el usuario lo compruebe en local.
-Esto lo hare ...  hoy no. Mañana XD. 
-
-
-## CSP (¡leer antes de tocar los inline!)
-
-La CSP viaja en `<meta>` dentro de `index.html`: aplica también descargado.
+La CSP viaja en un `<meta>` dentro de `index.html` (aplica también descargado).
 Los dos `sha256-...` de `script-src` autorizan EXACTAMENTE los dos scripts
-inline. Si edita cualquiera de ellos, recalcule su hash (contenido exacto
-entre `<script>` y `</script>`, espacios incluidos):
+inline. Si edita cualquiera, recalcule su hash (contenido exacto entre
+`<script>` y `</script>`, espacios incluidos):
 
 ```sh
 perl -0777 -ne 'while (/<script>(.*?)<\/script>/gs) { open(F,">","/tmp/i".(++$i).".js"); print F $1 }' index.html

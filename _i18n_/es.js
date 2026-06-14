@@ -134,6 +134,8 @@ var SGN_DOM = {
     SIGNER_HELP_5: 'El firmador solo atiende mientras la página está abierta y desbloqueada. Si la cierras o pulsas "Bloquear", las apps conectadas dejarán de poder firmar hasta que vuelvas.',
     SIGNER_HELP_6T: 'Controla.',
     SIGNER_HELP_6: 'En "Apps conectadas" puedes renombrar una app, revocar sus permisos o desconectarla; en "Actividad" ves todo lo que se ha firmado o rechazado.',
+    SIGNER_HELP_7T: 'Recomendado: úsalo en el móvil, como app.',
+    SIGNER_HELP_7: 'Lo más cómodo: abre signer.noxtr.net en el móvil y usa "Añadir a pantalla de inicio". Se instala como una app, a pantalla completa y siempre a mano; con "Recordar en este dispositivo" tu identidad queda lista al abrir. Para la mayoría es más práctico que llevar la nsec en un USB.',
     SIGNER_SETUP_TITLE: 'Crear o importar tu identidad',
     SIGNER_SETUP_NSEC2: 'Clave privada (nsec)',
     SIGNER_SETUP_NSEC_PH: 'nsec1... (genérala nueva o impórtala con los botones)',
