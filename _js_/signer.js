@@ -312,8 +312,11 @@
 
     // ==================== KEYSTORE (IndexedDB, nsec cifrada en reposo) ====================
 
+    // Multi-identidad: cada registro se indexa por su pubkey (record.id === pubkeyHex) y
+    // un puntero en localStorage (ACTIVE) marca cuál está activa. Solo una activa a la vez.
+    // El esquema antiguo guardaba un único registro con id fijo 'main' → migrate() lo reubica.
     var KeyStore = {
-        DB: 'SignerKeys', STORE: 'keys',
+        DB: 'SignerKeys', STORE: 'keys', ACTIVE: 'signer_active',
         _open: function() {
             return new Promise(function(resolve, reject) {
                 var req = indexedDB.open(KeyStore.DB, 1);
@@ -325,33 +328,71 @@
                 req.onerror = function() { reject(req.error); };
             });
         },
-        load: async function() {
+        get: async function(id) {
             var db = await this._open();
             return new Promise(function(resolve) {
                 var tx = db.transaction(KeyStore.STORE, 'readonly');
-                var rq = tx.objectStore(KeyStore.STORE).get('main');
+                var rq = tx.objectStore(KeyStore.STORE).get(id);
                 rq.onsuccess = function() { db.close(); resolve(rq.result || null); };
                 rq.onerror = function() { db.close(); resolve(null); };
+            });
+        },
+        list: async function() {
+            var db = await this._open();
+            return new Promise(function(resolve) {
+                var tx = db.transaction(KeyStore.STORE, 'readonly');
+                var rq = tx.objectStore(KeyStore.STORE).getAll();
+                rq.onsuccess = function() { db.close(); resolve(rq.result || []); };
+                rq.onerror = function() { db.close(); resolve([]); };
             });
         },
         save: async function(record) {
             var db = await this._open();
             return new Promise(function(resolve, reject) {
                 var tx = db.transaction(KeyStore.STORE, 'readwrite');
-                record.id = 'main';
+                record.id = record.pubkeyHex;   // clave primaria = pubkey de la identidad
                 tx.objectStore(KeyStore.STORE).put(record);
                 tx.oncomplete = function() { db.close(); resolve(); };
                 tx.onerror = function() { db.close(); reject(tx.error); };
             });
         },
-        clear: async function() {
+        delete: async function(id) {
             var db = await this._open();
             return new Promise(function(resolve) {
                 var tx = db.transaction(KeyStore.STORE, 'readwrite');
-                tx.objectStore(KeyStore.STORE).delete('main');
+                tx.objectStore(KeyStore.STORE).delete(id);
                 tx.oncomplete = function() { db.close(); resolve(); };
                 tx.onerror = function() { db.close(); resolve(); };
             });
+        },
+        getActiveId: function() {
+            try { return localStorage.getItem(this.ACTIVE) || null; } catch(e) { return null; }
+        },
+        setActiveId: function(id) {
+            try { if (id) localStorage.setItem(this.ACTIVE, id); else localStorage.removeItem(this.ACTIVE); } catch(e) {}
+        },
+        // Migración del esquema monousuario: el registro de id fijo 'main' pasa a indexarse por
+        // su pubkey, y sus clientes/actividad globales (claves sin sufijo) al espacio de esa
+        // identidad. Idempotente: si ya no hay 'main', no hace nada.
+        migrate: async function() {
+            var old = await this.get('main');
+            if (!old || !old.pubkeyHex) return;
+            var pk = old.pubkeyHex;
+            await this.save(old);        // re-guarda con id = pubkey
+            await this.delete('main');
+            if (!this.getActiveId()) this.setActiveId(pk);
+            try {
+                var c = localStorage.getItem('signer_clients');
+                if (c !== null && localStorage.getItem('signer_clients:' + pk) === null)
+                    localStorage.setItem('signer_clients:' + pk, c);
+                if (c !== null) localStorage.removeItem('signer_clients');
+            } catch(e) {}
+            try {
+                var a = localStorage.getItem('signer_activity');
+                if (a !== null && localStorage.getItem('signer_activity:' + pk) === null)
+                    localStorage.setItem('signer_activity:' + pk, a);
+                if (a !== null) localStorage.removeItem('signer_activity');
+            } catch(e) {}
         }
     };
 
@@ -527,12 +568,24 @@
 
     var SENSITIVE_KINDS = [0, 5, 1059];  // perfil, borrado, gift wrap (Mostro): SIEMPRE confirman
 
+    // Operaciones de DM: se auto-aprueban SIEMPRE, sin dialogo, sin depender de perms ni de
+    // re-emparejar. El firmador ya custodia la nsec; confirmar cada mensaje de una bandeja es
+    // inviable. Cubre el cifrado/descifrado (nip04/nip44) y la firma del propio DM (kind 4).
+    // NIP-17 usa gift wrap (1059), que es sensible y sigue confirmando (lo usa Mostro).
+    var DM_AUTO_METHODS = ['nip04_encrypt', 'nip04_decrypt', 'nip44_encrypt', 'nip44_decrypt'];
+    var DM_AUTO_KINDS = [4];
+
     var Grants = {
         _g: {},  // clientPubkey -> { kind: true }
         allow: function(clientPk, kind) { if (!this._g[clientPk]) this._g[clientPk] = {}; this._g[clientPk][kind] = true; UI.renderClients(); },
         has: function(clientPk, kind) {
             if (SENSITIVE_KINDS.indexOf(kind) !== -1) return false;
-            return !!(this._g[clientPk] && this._g[clientPk][kind]);
+            var g = this._g[clientPk];
+            if (!g) return false;
+            if (g[kind]) return true;
+            // Permiso generico 'sign_event' del URI: auto-firma kinds no sensibles (no metodos)
+            if (typeof kind === 'number' && g['sign_event']) return true;
+            return false;
         },
         revoke: function(clientPk, kind) { if (this._g[clientPk]) delete this._g[clientPk][kind]; UI.renderClients(); },
         of: function(clientPk) { return Object.keys(this._g[clientPk] || {}); },
@@ -544,13 +597,15 @@
     var Activity = {
         KEY: 'signer_activity', MAX: 50,
         list: [],
+        // La actividad es por-identidad: la clave lleva el sufijo de la pubkey activa.
+        _key: function() { return this.KEY + ':' + (Keys.pubkey || 'none'); },
         load: function() {
-            try { this.list = JSON.parse(localStorage.getItem(this.KEY)) || []; } catch(e) { this.list = []; }
+            try { this.list = JSON.parse(localStorage.getItem(this._key())) || []; } catch(e) { this.list = []; }
         },
         add: function(app, detail, action) {
             this.list.unshift({ ts: Math.floor(Date.now() / 1000), app: app, detail: detail, action: action });
             if (this.list.length > this.MAX) this.list = this.list.slice(0, this.MAX);
-            try { localStorage.setItem(this.KEY, JSON.stringify(this.list)); } catch(e) {}
+            try { localStorage.setItem(this._key(), JSON.stringify(this.list)); } catch(e) {}
             UI.renderActivity();
         }
     };
@@ -560,7 +615,9 @@
     var KIND_NAMES = { 0: 'profile', 1: 'note', 3: 'contacts', 4: 'DM', 5: 'delete', 6: 'repost', 7: 'reaction', 1059: 'gift wrap', 9734: 'zap request', 22242: 'auth', 24133: 'nip46', 27235: 'HTTP auth (login)', 30023: 'article' };
 
     var Bunker = {
-        STORAGE: 'signer_clients',
+        STORAGE: 'signer_clients',   // base; la clave real lleva el sufijo de la pubkey activa
+        // Los clientes emparejados son por-identidad: cada una recuerda los suyos.
+        _key: function() { return this.STORAGE + ':' + (Keys.pubkey || 'none'); },
         // Relays propios del firmador: donde escucha para el pairing bunker:// y donde
         // responde a esos clientes. (Los clientes nostrconnect:// traen los suyos en la URI.)
         // Relays propios: relays.js (raíz, editable por el usuario) puede definir
@@ -581,6 +638,7 @@
         pairingSecret: null,  // secret de un solo uso para la URI bunker:// (rota tras cada pairing)
         _seen: {},
         _lastCryptLog: {},  // throttle del log para nip04/44_encrypt/decrypt auto-aprobados
+        _approvals: {},     // dialogos de aprobacion en vuelo por (cliente|op): coalesce de rafagas
 
         accept: async function(uriRaw) {
             if (!Keys.privkey) throw new Error(str_sgn_need_unlock);
@@ -595,13 +653,15 @@
             var relays = parsed.searchParams.getAll('relay');
             var secret = parsed.searchParams.get('secret') || '';
             var name = parsed.searchParams.get('name') || 'Unknown app';
+            var perms = parsed.searchParams.get('perms') || '';
 
             if (!clientPubkey || clientPubkey.length !== 64 || !/^[0-9a-f]+$/i.test(clientPubkey))
                 throw new Error('invalid client pubkey');
             if (!relays.length) throw new Error('URI has no relay');
 
             var convKey = await Nip44.getConversationKey(Keys.privkey, clientPubkey);
-            this.clients[clientPubkey] = { convKey: convKey, name: name, secret: secret, relays: relays };
+            this.clients[clientPubkey] = { convKey: convKey, name: name, secret: secret, relays: relays, perms: perms };
+            this._applyPerms(clientPubkey, perms);
 
             for (var i = 0; i < relays.length; i++) Pool.connect(relays[i]);
 
@@ -660,14 +720,15 @@
         restore: async function() {
             try {
                 if (!Keys.privkey) return false;
-                var data = JSON.parse(localStorage.getItem(this.STORAGE));
+                var data = JSON.parse(localStorage.getItem(this._key()));
                 if (!data || !data.clients) return false;
                 var keys = Object.keys(data.clients);
                 if (!keys.length) return false;
                 for (var i = 0; i < keys.length; i++) {
                     var pk = keys[i], c = data.clients[pk];
                     var convKey = await Nip44.getConversationKey(Keys.privkey, pk);
-                    this.clients[pk] = { convKey: convKey, name: c.name, secret: c.secret, relays: c.relays || [] };
+                    this.clients[pk] = { convKey: convKey, name: c.name, secret: c.secret, relays: c.relays || [], perms: c.perms || '' };
+                    this._applyPerms(pk, c.perms || '');
                     for (var j = 0; j < (c.relays || []).length; j++) Pool.connect(c.relays[j]);
                 }
                 this._subscribe();
@@ -681,9 +742,9 @@
             try {
                 var toSave = {};
                 Object.keys(this.clients).forEach(function(pk) {
-                    toSave[pk] = { name: Bunker.clients[pk].name, secret: Bunker.clients[pk].secret, relays: Bunker.clients[pk].relays };
+                    toSave[pk] = { name: Bunker.clients[pk].name, secret: Bunker.clients[pk].secret, relays: Bunker.clients[pk].relays, perms: Bunker.clients[pk].perms || '' };
                 });
-                localStorage.setItem(this.STORAGE, JSON.stringify({ clients: toSave }));
+                localStorage.setItem(this._key(), JSON.stringify({ clients: toSave }));
             } catch(e) {}
         },
 
@@ -720,7 +781,9 @@
                 if (method !== 'connect') return;
                 var secret = String(params[1] || '');
                 if (!this.pairingSecret || !secret || secret !== this.pairingSecret) return;
-                client = this.clients[ev.pubkey] = { convKey: convKey, name: 'bunker ' + shortKey(ev.pubkey), secret: secret, relays: this.RELAYS.slice() };
+                var bperms = String(params[2] || '');
+                client = this.clients[ev.pubkey] = { convKey: convKey, name: 'bunker ' + shortKey(ev.pubkey), secret: secret, relays: this.RELAYS.slice(), perms: bperms };
+                this._applyPerms(ev.pubkey, bperms);
                 this.pairingSecret = bytesToHex(crypto.getRandomValues(new Uint8Array(16)));  // un solo uso
                 this._save();
                 Activity.add(client.name, 'bunker://', str_sgn_act_connected);
@@ -760,10 +823,12 @@
                     //  - kind 27235 (login web NIP-98) → auto-firma
                     //  - grant en memoria (cliente, kind) → auto-firma (nunca para kinds sensibles)
                     //  - resto → confirmar siempre
-                    var auto = (kind === 27235) || Grants.has(ev.pubkey, kind);
+                    var auto = (kind === 27235) || DM_AUTO_KINDS.indexOf(kind) !== -1 || Grants.has(ev.pubkey, kind);
                     if (!auto) {
                         var preview = eventToSign.content ? String(eventToSign.content).slice(0, 200) : '';
-                        var decision = await UI.askApproval(client.name, kindDesc, preview, SENSITIVE_KINDS.indexOf(kind) === -1);
+                        var decision = await this._coalesceApproval(ev.pubkey + '|sign:' + kind, function() {
+                            return UI.askApproval(client.name, kindDesc, preview, SENSITIVE_KINDS.indexOf(kind) === -1);
+                        });
                         if (decision === 'no') {
                             Activity.add(client.name, kindDesc, str_sgn_act_rejected);
                             await this._sendResponse(ev.pubkey, id, null, str_sgn_rejected_by_user);
@@ -787,10 +852,12 @@
 
                     // Misma política que sign_event, con grant por (cliente, método): cifrar/descifrar
                     // DMs va en ráfagas (bandejas enteras) y pedir confirmación por mensaje es inviable.
-                    var autoOp = Grants.has(ev.pubkey, method);
+                    var autoOp = DM_AUTO_METHODS.indexOf(method) !== -1 || Grants.has(ev.pubkey, method);
                     if (!autoOp) {
-                        var d = await UI.askApproval(client.name, opDesc, '', true,
-                            { msg: str_sgn_app_wants_op, once: str_sgn_allow, remember: str_sgn_allow_remember });
+                        var d = await this._coalesceApproval(ev.pubkey + '|' + method, function() {
+                            return UI.askApproval(client.name, opDesc, '', true,
+                                { msg: str_sgn_app_wants_op, once: str_sgn_allow, remember: str_sgn_allow_remember });
+                        });
                         if (d === 'no') {
                             Activity.add(client.name, opDesc, str_sgn_act_rejected);
                             await this._sendResponse(ev.pubkey, id, null, str_sgn_rejected_by_user);
@@ -821,6 +888,35 @@
                 nip44_encrypt: str_sgn_op_n44e, nip44_decrypt: str_sgn_op_n44d,
                 nip04_encrypt: str_sgn_op_n04e, nip04_decrypt: str_sgn_op_n04d
             })[method] || method;
+        },
+
+        // Coalesce de aprobaciones: una rafaga de peticiones identicas (mismo cliente y misma
+        // operacion) comparte UN solo dialogo en vez de apilar N overlays, que llegan a tapar
+        // toda la pantalla. El primero lo abre; el resto espera su misma decision.
+        _coalesceApproval: function(key, opener) {
+            if (this._approvals[key]) return this._approvals[key];
+            var self = this;
+            var p = opener();
+            this._approvals[key] = p;
+            p.then(function() { delete self._approvals[key]; }, function() { delete self._approvals[key]; });
+            return p;
+        },
+
+        // Permisos NIP-46 del URI (param perms): pre-conceder lo que la app pide al conectar
+        // para no confirmar cada operacion. Cifrado/descifrado (nip04/nip44) y, si se pide,
+        // sign_event generico (kinds no sensibles; 0/5/1059 siguen confirmando). get_public_key
+        // no necesita grant. Es lo que hacen Amber/nsec.app y por lo que alli los DM no preguntan.
+        _applyPerms: function(clientPk, permsStr) {
+            if (!permsStr) return;
+            var parts = String(permsStr).split(',');
+            for (var i = 0; i < parts.length; i++) {
+                var p = parts[i].trim();
+                if (p === 'nip04_encrypt' || p === 'nip04_decrypt' || p === 'nip44_encrypt' || p === 'nip44_decrypt' || p === 'sign_event') {
+                    Grants.allow(clientPk, p);
+                } else if (/^sign_event:\d+$/.test(p)) {
+                    Grants.allow(clientPk, parseInt(p.split(':')[1], 10));
+                }
+            }
         },
 
         // Las ráfagas auto-aprobadas de cifrado/descifrado se loguean máximo una vez por minuto
@@ -891,6 +987,33 @@
         }
     };
 
+    // ==================== PERFIL (kind 0 → nombre) ====================
+    // Nombre de perfil de la identidad ACTIVA. Es público: NO necesita la nsec, y se consulta
+    // en los relays a los que el firmador ya está conectado con esa pubkey, así que no filtra
+    // metadatos nuevos. Se cachea en el registro y sirve como etiqueta por defecto del selector
+    // cuando no hay alias manual. Solo la activa: nunca se piden a la vez todas las pubkeys
+    // (evita correlacionar las identidades en un relay).
+    function fetchActiveProfile() {
+        if (!Keys.pubkey) return;
+        var pk = Keys.pubkey, bestTs = -1, sub;
+        function close() { if (sub) { Pool.unsubscribe(sub); sub = null; } }
+        sub = Pool.subscribe([{ kinds: [0], authors: [pk], limit: 1 }], function(ev) {
+            if (!sub || ev.kind !== 0 || ev.pubkey !== pk) return;
+            if ((ev.created_at || 0) <= bestTs) return;   // quedarnos con el más reciente
+            bestTs = ev.created_at || 0;
+            var name = '';
+            try { var m = JSON.parse(ev.content); name = String(m.display_name || m.name || '').trim(); } catch(e) {}
+            if (!name) return;
+            // aplicar solo si seguimos en la misma identidad activa
+            if (Keys.record && Keys.record.id === pk && Keys.record.profileName !== name) {
+                Keys.record.profileName = name;
+                if (!Keys.record.sessionOnly) KeyStore.save(Keys.record);
+                UI.renderSwitcher();
+            }
+        });
+        setTimeout(close, 8000);  // ventana corta; el nombre cacheado se ve al instante la próxima vez
+    }
+
     // ==================== UI ====================
 
     var UI = {
@@ -902,6 +1025,7 @@
                 // Sin contraseña configurada el campo no aplica (se desbloquea con la clave de dispositivo)
                 var pr = document.getElementById('locked-pass-row');
                 if (pr) pr.style.display = (Keys.record && Keys.record.encrypted) ? '' : 'none';
+                this.renderSwitcher();   // poder elegir qué identidad desbloquear
             }
         },
 
@@ -910,6 +1034,80 @@
             if (el && Keys.record) el.textContent = Keys.record.npub;
             var lk = document.getElementById('locked-npub');
             if (lk && Keys.record) lk.textContent = Keys.record.npub;
+        },
+
+        // Etiqueta amistosa de una identidad: alias manual > nombre del perfil (kind 0) >
+        // npub abreviado. Se recorta para no romper el ancho del selector.
+        idLabel: function(r) {
+            var name = r && (r.label || r.profileName);
+            if (name) return String(name).slice(0, 40);
+            if (r && r.npub) return r.npub.slice(0, 10) + '…' + r.npub.slice(-4);
+            return r ? shortKey(r.pubkeyHex) : '?';
+        },
+
+        // Selector de identidades. Lista las guardadas en IndexedDB y, al elegir otra, dispara
+        // el cambio de identidad activa. Se pinta tanto en el panel principal como en la
+        // pantalla de bloqueo (poder elegir qué identidad desbloquear sin pasar por la activa).
+        renderSwitcher: async function() {
+            var boxes = [document.getElementById('identity-switcher'), document.getElementById('locked-switcher')];
+            if (!boxes[0] && !boxes[1]) return;
+            var list = await KeyStore.list();
+            var active = Keys.record ? Keys.record.id : KeyStore.getActiveId();
+            var html = '';
+            if (list.length) {
+                html = '<select class="signer-id-select">';
+                list.forEach(function(r) {
+                    html += '<option value="' + escapeHtml(r.id) + '"' + (r.id === active ? ' selected' : '') + '>'
+                          + escapeHtml(UI.idLabel(r)) + '</option>';
+                });
+                html += '</select>';
+            }
+            boxes.forEach(function(box) {
+                if (!box) return;
+                box.innerHTML = html;
+                var sel = box.querySelector('.signer-id-select');
+                if (sel) sel.onchange = function() { UI.switchIdentity(sel.value); };
+            });
+        },
+
+        // Cambiar de identidad activa: baja limpiamente la actual (corta relays y olvida la
+        // privkey en memoria) ANTES de cargar la nueva, para que ningún cliente reciba una
+        // firma de la identidad equivocada. Si la nueva necesita contraseña, va a la pantalla
+        // de bloqueo; si tiene clave de dispositivo, se desbloquea sola.
+        switchIdentity: async function(id) {
+            if (!id || (Keys.record && Keys.record.id === id)) { await this.renderSwitcher(); return; }
+            var rec = await KeyStore.get(id);
+            if (!rec) { await this.renderSwitcher(); return; }
+            Keys.lock();                    // privkey = null + Bunker.suspend() (corta relays)
+            Keys.privkey = null; Keys.pubkey = null;
+            Keys.record = rec;
+            KeyStore.setActiveId(id);
+            if (rec.device && !rec.locked) {
+                try {
+                    var privHex = await deviceUnwrap(rec.device);
+                    Keys.derivePub(privHex);
+                    Keys.privkey = privHex;
+                    Keys.pubkey = rec.pubkeyHex;
+                    await this.enterMain();
+                    return;
+                } catch(e) {}  // si falla, caer al desbloqueo manual
+            }
+            this.show('locked');
+            this.renderIdentity();
+            var up = document.getElementById('unlock-pass'); if (up) up.focus();
+        },
+
+        // Renombrar la identidad activa (alias amistoso; no toca la clave).
+        renameIdentity: async function() {
+            if (!Keys.record) return;
+            var name = await prompt(
+                (typeof str_sgn_id_rename_prompt !== 'undefined') ? str_sgn_id_rename_prompt : 'Name for this identity:',
+                Keys.record.label || ''
+            );
+            if (name === null || name === false) return;
+            Keys.record.label = String(name).trim().slice(0, 40);
+            if (!Keys.record.sessionOnly) await KeyStore.save(Keys.record);
+            this.renderSwitcher();
         },
 
         renderRelays: function() {
@@ -1310,9 +1508,15 @@
                 if (remember) record.device = await deviceWrap(privHex);
                 if (toBrowser) await KeyStore.save(record);
                 else record.sessionOnly = true;  // nada en IndexedDB: vive solo en memoria
+                // Si ya había una identidad activa (estamos AÑADIENDO otra), bájala antes de
+                // tomar la nueva: corta sus relays y olvida su privkey en memoria.
+                if (Keys.privkey) Bunker.suspend();
                 Keys.record = record;
                 Keys.privkey = privHex;
                 Keys.pubkey = pubHex;
+                KeyStore.setActiveId(pubHex);
+                var cancelBtn = document.getElementById('btn-setup-cancel');
+                if (cancelBtn) cancelBtn.style.display = 'none';
                 if (toFile) await downloadBackupFile(privHex, record.npub, p1);
                 document.getElementById('setup-nsec').value = '';
                 document.getElementById('setup-pass').value = '';
@@ -1475,11 +1679,15 @@
             var btnLock = document.getElementById('btn-lock');
             if (btnLock) btnLock.onclick = async function() {
                 // Modo solo sesión: no hay nada guardado que desbloquear después —
-                // bloquear = olvidar (la nsec se re-carga del archivo del USB al volver)
+                // bloquear = olvidar (la nsec se re-carga del archivo del USB al volver).
+                // Si hay otras identidades guardadas, se salta a una; si no, al alta.
                 if (Keys.record && Keys.record.sessionOnly) {
                     Keys.lock();
-                    Keys.record = null; Keys.pubkey = null;
-                    self.show('setup');
+                    Keys.record = null; Keys.pubkey = null; Keys.privkey = null;
+                    KeyStore.setActiveId(null);
+                    var rest = await KeyStore.list();
+                    if (rest.length) await self.switchIdentity(rest[0].id);
+                    else self.show('setup');
                     return;
                 }
                 Keys.lock();
@@ -1567,21 +1775,60 @@
                 });
             };
 
-            // --- olvidar identidad ---
+            // --- olvidar (eliminar) la identidad activa ---
+            // Borra solo la identidad activa y sus datos (clientes, actividad). Si quedan más,
+            // activa la primera; si no queda ninguna, vuelve al alta.
             var forget = async function(e) {
                 if (e && e.preventDefault) e.preventDefault();
                 var ok = await confirm('⚠️ ' + str_sgn_forget_confirm);
                 if (!ok) return;
-                await KeyStore.clear();
-                try { localStorage.removeItem(Bunker.STORAGE); } catch(e) {}
+                var goneId = Keys.record ? Keys.record.id : KeyStore.getActiveId();
                 Keys.lock();
-                Keys.record = null; Keys.pubkey = null;
-                self.show('setup');
+                Keys.record = null; Keys.privkey = null; Keys.pubkey = null;
+                if (goneId) {
+                    await KeyStore.delete(goneId);
+                    try { localStorage.removeItem('signer_clients:' + goneId); } catch(e) {}
+                    try { localStorage.removeItem('signer_activity:' + goneId); } catch(e) {}
+                }
+                var rest = await KeyStore.list();
+                if (rest.length) {
+                    await self.switchIdentity(rest[0].id);   // activar otra identidad
+                } else {
+                    KeyStore.setActiveId(null);
+                    var cancel = document.getElementById('btn-setup-cancel');
+                    if (cancel) cancel.style.display = 'none';
+                    self.show('setup');
+                }
             };
             var f1 = document.getElementById('btn-forget-locked');
             var f2 = document.getElementById('btn-forget-main');
             if (f1) f1.onclick = forget;
             if (f2) f2.onclick = forget;
+
+            // --- añadir otra identidad: reutiliza la pantalla de alta sin tocar la activa ---
+            var btnAddId = document.getElementById('btn-add-identity');
+            if (btnAddId) btnAddId.onclick = function() {
+                Bunker.suspend();   // para la activa mientras se da de alta otra (se reanuda al volver)
+                document.getElementById('setup-nsec').value = '';
+                document.getElementById('setup-pass').value = '';
+                document.getElementById('setup-pass2').value = '';
+                entReset();
+                var cancel = document.getElementById('btn-setup-cancel');
+                if (cancel) cancel.style.display = '';   // hay activa → permitir volver
+                self.show('setup');
+            };
+
+            // --- volver desde el alta sin crear nada (solo si hay una identidad activa) ---
+            var btnSetupCancel = document.getElementById('btn-setup-cancel');
+            if (btnSetupCancel) btnSetupCancel.onclick = function(e) {
+                if (e && e.preventDefault) e.preventDefault();
+                if (Keys.privkey) self.enterMain();              // reanuda la identidad activa
+                else if (Keys.record) { self.show('locked'); self.renderIdentity(); }
+            };
+
+            // --- renombrar la identidad activa ---
+            var btnRenameId = document.getElementById('btn-rename-identity');
+            if (btnRenameId) btnRenameId.onclick = function() { self.renameIdentity(); };
 
             // --- pairing ---
             var btnPair = document.getElementById('btn-pair');
@@ -1633,6 +1880,23 @@
             };
             var btnScanStop = document.getElementById('btn-pair-scan-stop');
             if (btnScanStop) btnScanStop.onclick = stopScanner;
+
+            // --- pestañas de "Conectar una app": Escanear QR (por defecto) / Pegar nostrconnect /
+            // Copiar bunker. Cada una muestra su panel; al salir de Escanear se suelta la cámara. ---
+            var connectTabs = document.querySelectorAll('.signer-tab');
+            var connectPanels = document.querySelectorAll('.signer-tab-panel');
+            function showConnectTab(name) {
+                for (var i = 0; i < connectTabs.length; i++)
+                    connectTabs[i].classList.toggle('active', connectTabs[i].getAttribute('data-tab') === name);
+                for (var j = 0; j < connectPanels.length; j++)
+                    connectPanels[j].hidden = (connectPanels[j].getAttribute('data-panel') !== name);
+                if (name !== 'scan') stopScanner();   // soltar la cámara al salir de Escanear
+            }
+            for (var ti = 0; ti < connectTabs.length; ti++) {
+                (function(tab) {
+                    tab.onclick = function(e) { if (e && e.preventDefault) e.preventDefault(); showConnectTab(tab.getAttribute('data-tab')); };
+                })(connectTabs[ti]);
+            }
 
             // --- copiar URI bunker:// ---
             var btnCopyBunker = document.getElementById('btn-copy-bunker');
@@ -1783,7 +2047,9 @@
 
         enterMain: async function() {
             this.show('main');
+            Activity.load();          // actividad de la identidad activa (clave por-pubkey)
             this.renderIdentity();
+            this.renderSwitcher();
             this.renderAutoUnlock();
             this.renderClients();
             this.renderActivity();
@@ -1792,26 +2058,32 @@
             Bunker.listen();          // escuchar en los relays propios para pairing bunker://
             this.renderBunkerUri();
             this.renderClients();
+            fetchActiveProfile();     // nombre del perfil (kind 0) → etiqueta del selector
         }
     };
 
     // ==================== INIT ====================
 
     async function init() {
-        Activity.load();
         UI.wire();
-        Keys.record = await KeyStore.load();
-        if (!Keys.record) {
+        await KeyStore.migrate();   // esquema antiguo (id 'main') → indexado por pubkey
+        var list = await KeyStore.list();
+        if (!list.length) {
             UI.show('setup');
             return;
         }
+        // Resolver la identidad activa: el puntero guardado, validado contra lo que hay.
+        var activeId = KeyStore.getActiveId();
+        var rec = activeId ? list.filter(function(r) { return r.id === activeId; })[0] : null;
+        if (!rec) { rec = list[0]; KeyStore.setActiveId(rec.id); }
+        Keys.record = rec;
         // Desbloqueo automático con la clave de dispositivo (salvo bloqueo manual)
-        if (Keys.record.device && !Keys.record.locked) {
+        if (rec.device && !rec.locked) {
             try {
-                var privHex = await deviceUnwrap(Keys.record.device);
+                var privHex = await deviceUnwrap(rec.device);
                 Keys.derivePub(privHex);
                 Keys.privkey = privHex;
-                Keys.pubkey = Keys.record.pubkeyHex;
+                Keys.pubkey = rec.pubkeyHex;
                 UI.enterMain();
                 return;
             } catch(e) {}  // si falla, caer al desbloqueo manual

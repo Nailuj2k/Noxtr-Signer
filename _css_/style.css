@@ -79,7 +79,7 @@ body {
     grid-template-rows: auto 1fr auto;
     color: var(--ink);
     background-color: var(--bg);
-    max-width: 980px;
+    max-width: 600px;
     margin: 40px auto;
     border-radius: 12px;
     box-shadow: 0 0 0 1px var(--accent-border), 0 8px 30px rgba(60, 40, 120, 0.12);
@@ -231,3 +231,4 @@ p {text-wrap: pretty;margin-block: 1lh;}
 .lang-switch a:hover { opacity: 1; }
 .lang-switch a.lang-active { opacity: 1; color: var(--primary, #8B5CF6); }
 
+button{margin-bottom:4px;}

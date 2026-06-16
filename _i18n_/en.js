@@ -81,6 +81,7 @@ const str_sgn_copy              = 'Copy';
 const str_sgn_close             = 'Close';
 const str_sgn_rename            = 'rename';
 const str_sgn_rename_prompt     = 'New name for this app:';
+const str_sgn_id_rename_prompt  = 'Name for this identity:';
 const str_sgn_words_bad_checksum = 'Invalid BIP39 checksum: almost surely a word is misspelled or out of order. Import anyway?';
 const str_sgn_no_relays_warn    = 'No relay connection: apps cannot reach the signer right now.';
 const str_sgn_show_nsec_title   = 'Your private key (nsec)';
@@ -137,8 +138,9 @@ var SGN_DOM = {
     SIGNER_HELP_7T: 'Recommended: use it on mobile, as an app.',
     SIGNER_HELP_7: 'The handiest way: open signer.noxtr.net on your phone and use "Add to Home Screen". It installs like an app, full-screen and always within reach; with "Remember on this device" your identity is ready as soon as you open it. For most people this is more practical than carrying the nsec on a USB stick.',
     SIGNER_SETUP_TITLE: 'Create or import your identity',
-    SIGNER_SETUP_NSEC2: 'Private key (nsec)',
-    SIGNER_SETUP_NSEC_PH: 'nsec1... (generate a new one or import it with the buttons)',
+    SIGNER_SETUP_NSEC2: 'Your private key (nsec)',
+    SIGNER_SETUP_NSEC_PH: 'Paste your nsec here (starts with nsec1…)',
+    SIGNER_SETUP_PASTE_HINT: 'Already have a Nostr key? Paste your nsec above and click "Save identity". Starting from scratch? Generate or import one another way with the buttons below.',
     SIGNER_SHOW_HIDE: 'Show/Hide',
     SIGNER_COPY: 'Copy',
     SIGNER_GENERATE_NEW: 'Generate new key',
@@ -160,6 +162,12 @@ var SGN_DOM = {
     SIGNER_LOCKED_PASS: 'Password',
     SIGNER_UNLOCK: 'Unlock',
     SIGNER_FORGET: 'Remove this identity from this browser',
+    SIGNER_DELETE_SHORT: 'Delete',
+    SIGNER_ADD_IDENTITY: 'Add identity',
+    SIGNER_ADD_SHORT: 'Add',
+    SIGNER_EXPORT_BACKUP_SHORT: 'Export',
+    SIGNER_RENAME_IDENTITY: 'Rename',
+    SIGNER_SETUP_BACK: 'Back without creating',
     SIGNER_IDENTITY_TITLE: 'Your identity',
     SIGNER_LOCK: 'Lock',
     SIGNER_SHOW_NSEC: 'Show nsec',
@@ -168,6 +176,9 @@ var SGN_DOM = {
     SIGNER_PAIR_HINT: 'Paste here the nostrconnect:// URI shown by the client app (in noxtr: Login → Nostr Connect).',
     SIGNER_PAIR: 'Connect',
     SIGNER_SCAN_QR: 'Scan QR',
+    SIGNER_CONNECT_PASTE: 'Paste nostrconnect',
+    SIGNER_CONNECT_BUNKER: 'Copy bunker',
+    SIGNER_SCAN_HINT: 'Point the camera at the QR code the app shows you (in noxtr: Login → Nostr Connect).',
     SIGNER_SCAN_STOP: 'Close camera',
     SIGNER_BUNKER_HINT: '...or copy this bunker:// address and paste it into the client app (single-use: it renews after each connection):',
     SIGNER_CLIENTS_TITLE: 'Connected apps',

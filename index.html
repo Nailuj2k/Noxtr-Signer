@@ -52,10 +52,10 @@
         <link rel="apple-touch-icon" href="_images_/pwa/icon-192.png">
 
         <link rel="stylesheet" href="_css_/reset.css">
-        <link rel="stylesheet" href="_css_/style.css">
+        <link rel="stylesheet" href="_css_/style.css?v=1.0.1">
         <link rel="stylesheet" href="_css_/style.buttons.css">
         <link rel="stylesheet" href="_js_/wquery/wquery.dialog.css">
-        <link rel="stylesheet" href="_css_/signer.css">
+        <link rel="stylesheet" href="_css_/signer.css?v=1.0.7">
 
         <link rel="icon" type="image/svg+xml" href="logo.svg">
 
@@ -115,12 +115,13 @@
     <!-- State: no identity → create or import -->
     <div id="signer-setup" class="signer-panel" style="display:none">
         <h2 data-i18n="SIGNER_SETUP_TITLE">Crear o importar tu identidad</h2>
-        <label data-i18n="SIGNER_SETUP_NSEC2">Clave privada (nsec)</label>
+        <label data-i18n="SIGNER_SETUP_NSEC2">Tu clave privada (nsec)</label>
         <div class="signer-nsec-row">
-            <input type="password" id="setup-nsec" data-i18n-ph="SIGNER_SETUP_NSEC_PH" placeholder="nsec1... (genérala nueva o impórtala con los botones)">
+            <input type="password" id="setup-nsec" data-i18n-ph="SIGNER_SETUP_NSEC_PH" placeholder="Pega aquí tu nsec (empieza por nsec1…)">
             <button id="btn-nsec-eye" class="btn" data-i18n-title="SIGNER_SHOW_HIDE" title="Mostrar/Ocultar"><span class="sgn-i sgn-i-eye"></span></button>
             <button id="btn-nsec-copy" class="btn" data-i18n-title="SIGNER_COPY" title="Copiar"><span class="sgn-i sgn-i-copy"></span></button>
         </div>
+        <p class="signer-hint" data-i18n="SIGNER_SETUP_PASTE_HINT">¿Ya tienes una clave Nostr? Pega tu nsec aquí arriba y pulsa "Guardar identidad". ¿Empiezas de cero? Genera o impórtala de otra forma con los botones de abajo.</p>
         <div class="signer-import-row">
             <button id="btn-setup-generate" class="btn"><span class="sgn-i sgn-i-zap"></span> <span data-i18n="SIGNER_GENERATE_NEW">Generar clave nueva</span></button>
             <button id="btn-setup-backup" class="btn"><span class="sgn-i sgn-i-folder"></span> <span data-i18n="SIGNER_LOAD_BACKUP2">Cargar backup JSON</span></button>
@@ -156,12 +157,16 @@
         <!-- Dynamic panel: signer.js fills it based on the checkbox combination (renderStoreInfo) -->
         <div id="setup-store-info" class="signer-store-info"></div>
         <button id="btn-setup-save" class="btn btn-primary" data-i18n="SIGNER_SETUP_SAVE">Guardar identidad</button>
+        <p class="signer-hint"><a href="#" id="btn-setup-cancel" style="display:none" data-i18n="SIGNER_SETUP_BACK">Volver sin crear</a></p>
         <p class="signer-hint" data-i18n="SIGNER_SETUP_HINT2">La nsec se guarda siempre cifrada en este navegador. Con el desbloqueo automático se cifra con una clave interna del navegador (no extraíble): quien use este perfil del navegador podrá firmar, como una sesión iniciada. La contraseña es una capa extra (recomendada en equipos compartidos) y se pide siempre para mostrar la nsec. Guarda una copia de la nsec en lugar seguro.</p>
     </div>
 
     <!-- State: identity saved but locked -->
     <div id="signer-locked" class="signer-panel" style="display:none">
         <h2><span class="sgn-i sgn-i-lock"></span> <span data-i18n="SIGNER_LOCKED_TITLE">Identidad bloqueada</span></h2>
+        <div class="signer-id-switcher">
+            <div id="locked-switcher"></div>
+        </div>
         <div id="locked-npub" class="signer-npub"></div>
         <div id="locked-pass-row">
             <label data-i18n="SIGNER_LOCKED_PASS">Contraseña</label>
@@ -174,39 +179,70 @@
     <!-- State: unlocked / operational -->
     <div id="signer-main" style="display:none">
 
+        <!-- Estado de conexión: global (no depende de la identidad), por eso va fuera del panel -->
+        <div id="relay-status" class="signer-relays"></div>
+
         <div class="signer-panel">
             <h2><span class="sgn-i sgn-i-user"></span> <span data-i18n="SIGNER_IDENTITY_TITLE">Tu identidad</span></h2>
+
+            <div id="identity-switcher"></div>
+            <!-- Gestión de la identidad: renombrar / añadir / eliminar (rojo). Eliminar pide confirmación. -->
+            <div class="signer-btn-row">
+                <button id="btn-rename-identity" class="btn" data-i18n="SIGNER_RENAME_IDENTITY">Renombrar</button>
+                <button id="btn-add-identity" class="btn" data-i18n="SIGNER_ADD_SHORT">Añadir</button>
+                <button id="btn-forget-main" class="btn btn-danger" data-i18n="SIGNER_DELETE_SHORT">Eliminar</button>
+            </div>
+
             <div id="main-npub" class="signer-npub"></div>
-            <div id="relay-status" class="signer-relays"></div>
             <div id="autounlock-row" class="signer-autounlock"></div>
-            <div class="signer-actions">
-                <button id="btn-lock" class="btn"><span class="sgn-i sgn-i-lock"></span> <span data-i18n="SIGNER_LOCK">Bloquear</span></button>
+
+            <!-- Bloquear / Mostrar nsec / Exportar a un tercio cada uno -->
+            <div class="signer-btn-row">
+                <button id="btn-lock" class="btn" data-i18n="SIGNER_LOCK">Bloquear</button>
                 <button id="btn-show-nsec" class="btn" data-i18n="SIGNER_SHOW_NSEC">Mostrar nsec</button>
-                <button id="btn-export-backup" class="btn"><span class="sgn-i sgn-i-download"></span> <span data-i18n="SIGNER_EXPORT_BACKUP">Exportar backup cifrado</span></button>
-                <a href="#" id="btn-forget-main" class="signer-danger-link" data-i18n="SIGNER_FORGET">Eliminar esta identidad de este navegador</a>
+                <button id="btn-export-backup" class="btn" data-i18n="SIGNER_EXPORT_BACKUP_SHORT">Exportar</button>
             </div>
         </div>
 
         <div class="signer-panel">
             <h2><span class="sgn-i sgn-i-link"></span> <span data-i18n="SIGNER_PAIR_TITLE">Conectar una app</span></h2>
-            <p class="signer-hint" data-i18n="SIGNER_PAIR_HINT">Pega aquí la URI nostrconnect:// que te muestra la app cliente (en noxtr: Login → Nostr Connect).</p>
-            <textarea id="pair-uri" rows="3" placeholder="nostrconnect://..."></textarea>
-            <div class="signer-pair-actions">
+
+            <!-- Tres formas de conectar; cada pestaña muestra su panel. Escanear QR por defecto. -->
+            <!-- Etiquetas neutras (nombres de protocolo + icono): no se traducen, sin data-i18n -->
+            <div class="signer-connect-tabs">
+                <a href="#" class="signer-tab active" data-tab="scan"><span class="sgn-i sgn-i-camera"></span> QR</a>
+                <a href="#" class="signer-tab" data-tab="paste"><span class="sgn-i sgn-i-link"></span> nostrconnect</a>
+                <a href="#" class="signer-tab" data-tab="bunker"><span class="sgn-i sgn-i-copy"></span> bunker</a>
+            </div>
+
+            <!-- Escanear QR (por defecto): el firmador escanea el QR que muestra la app -->
+            <div class="signer-tab-panel" data-panel="scan">
+                <p class="signer-hint" data-i18n="SIGNER_SCAN_HINT">Apunta la cámara al código QR que te muestra la app (en noxtr: Login → Nostr Connect).</p>
+                <button id="btn-pair-scan" class="btn btn-primary"><span class="sgn-i sgn-i-camera"></span> <span data-i18n="SIGNER_SCAN_QR">Escanear QR</span></button>
+                <div id="pair-qr-scanner" style="display:none">
+                    <!-- Camera QR scanner (Html5Qrcode injects the video here) -->
+                    <div id="pair-scan-video"></div>
+                    <p id="pair-scan-status" class="signer-hint"></p>
+                    <button id="btn-pair-scan-stop" class="btn" data-i18n="SIGNER_SCAN_STOP">Cerrar cámara</button>
+                </div>
+            </div>
+
+            <!-- Pegar la URI nostrconnect:// que muestra la app -->
+            <div class="signer-tab-panel" data-panel="paste" hidden>
+                <p class="signer-hint" data-i18n="SIGNER_PAIR_HINT">Pega aquí la URI nostrconnect:// que te muestra la app cliente (en noxtr: Login → Nostr Connect).</p>
+                <textarea id="pair-uri" rows="3" placeholder="nostrconnect://..."></textarea>
                 <button id="btn-pair" class="btn btn-primary" data-i18n="SIGNER_PAIR">Conectar</button>
-                <button id="btn-pair-scan" class="btn"><span class="sgn-i sgn-i-camera"></span> <span data-i18n="SIGNER_SCAN_QR">Escanear QR</span></button>
             </div>
-            <div id="pair-qr-scanner" style="display:none">
-                <!-- Camera QR scanner (Html5Qrcode injects the video here) -->
-                <div id="pair-scan-video"></div>
-                <p id="pair-scan-status" class="signer-hint"></p>
-                <button id="btn-pair-scan-stop" class="btn" data-i18n="SIGNER_SCAN_STOP">Cerrar cámara</button>
+
+            <!-- Copiar la dirección bunker:// para pegarla en la app -->
+            <div class="signer-tab-panel" data-panel="bunker" hidden>
+                <p class="signer-hint signer-bunker-hint" data-i18n="SIGNER_BUNKER_HINT">...o copia esta dirección bunker:// y pégala en la app cliente (de un solo uso: se renueva tras cada conexión):</p>
+                <div class="signer-bunker-row">
+                    <input type="text" id="bunker-uri" readonly>
+                    <button id="btn-copy-bunker" class="btn" data-i18n-title="SIGNER_COPY" title="Copiar"><span class="sgn-i sgn-i-copy"></span></button>
+                </div>
+                <div id="bunker-qr" class="signer-bunker-qr" title="bunker://"></div>
             </div>
-            <p class="signer-hint signer-bunker-hint" data-i18n="SIGNER_BUNKER_HINT">...o copia esta dirección bunker:// y pégala en la app cliente (de un solo uso: se renueva tras cada conexión):</p>
-            <div class="signer-bunker-row">
-                <input type="text" id="bunker-uri" readonly>
-                <button id="btn-copy-bunker" class="btn" data-i18n-title="SIGNER_COPY" title="Copiar"><span class="sgn-i sgn-i-copy"></span></button>
-            </div>
-            <div id="bunker-qr" class="signer-bunker-qr" title="bunker://"></div>
         </div>
 
         <div class="signer-panel">
@@ -262,7 +298,7 @@
         <script src="relays.js"></script>
 
         <!-- The whole signer module (formerly _modules_/signer/script.js) -->
-        <script src="_js_/signer.js"></script>
+        <script src="_js_/signer.js?v=1.0.5"></script>
         <script src="_js_/pwa.js"></script>
 
         <script>

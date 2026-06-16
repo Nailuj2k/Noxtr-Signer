@@ -31,9 +31,9 @@
 .sgn-i-download   { --i: url(../_images_/feather/download.svg); }
 
 .signer-wrap {
-    max-width: 720px;
+    max-width: 600px;   /* vista tipo móvil siempre; centrada en PC */
     margin: 30px auto 60px;
-    padding: 0 16px;
+    padding: 0px;
 }
 
 .signer-title { margin-bottom: 4px; }
@@ -81,16 +81,65 @@
     border-radius: 6px;
     font-family: monospace;
 }
-.signer-panel button { margin-top: 12px; }
-.signer-import-row { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
-.signer-import-row button { margin-top: 0; font-size: 0.85em; }
-
-@media (max-width: 560px) {
-    .signer-import-row { display: block; }
-    .signer-import-row button { width: 100%; margin-bottom: 10px; }
-    .signer-import-row button:last-of-type { margin-bottom: 0; }
-    #btn-setup-save { width: 100%; }
+/* --- Grupos de botones apilados -----------------------------------------
+   Un único sistema: columna flex con separación uniforme (gap) y botones a
+   todo el ancho. Así no se mezcla gap con margin-top/bottom sueltos, que era
+   lo que dejaba unos huecos más grandes que otros. */
+.signer-import-row,
+.signer-actions,
+.signer-pair-actions,
+.signer-id-switcher {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    margin-top: 12px;
 }
+.signer-import-row > *,
+.signer-actions > *,
+.signer-pair-actions > *,
+.signer-id-switcher > * {
+    width: 100%;
+    margin: 0;
+    box-sizing: border-box;
+}
+.signer-import-row button { font-size: 0.85em; }
+/* El enlace "eliminar identidad" no necesita ocupar todo el ancho */
+.signer-actions .signer-danger-link { align-self: flex-start; width: auto; }
+/* Botones sueltos a todo el ancho, con la misma separación superior */
+#btn-setup-save,
+#btn-unlock,
+#btn-pair,
+#btn-pair-scan { width: 100%; box-sizing: border-box; margin-top: 12px; }
+
+/* Filas de tres botones a partes iguales (Renombrar/Añadir/Eliminar, Bloquear/Mostrar nsec/Exportar) */
+.signer-btn-row { display: flex; align-items: stretch; gap: 8px; margin-top: 12px; }
+.signer-btn-row > * { flex: 1 1 0; min-width: 0; box-sizing: border-box; }
+/* compactar para que quepan tres por fila incluso en móviles estrechos (parten línea si hace falta) */
+.signer-btn-row .btn { padding: 8px 6px; font-size: 0.85em; white-space: normal; }
+#main-npub { margin-top: 12px; }
+
+/* Pestañas de "Conectar una app": tres a partes iguales (cada una un tercio), centradas */
+.signer-connect-tabs { display: flex; gap: 6px; margin: 4px 0 12px; }
+.signer-tab {
+    flex: 1 1 0;
+    min-width: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4em;
+    white-space: nowrap;
+    cursor: pointer;
+    font-size: 0.85em;
+    padding: 6px 8px;
+    border-radius: 999px;
+    border: 1px solid rgba(139, 92, 246, 0.35);
+    color: inherit;
+    text-decoration: none;
+    opacity: 0.7;
+}
+.signer-tab.active { background: rgba(139, 92, 246, 0.18); opacity: 1; font-weight: 600; }
+.signer-tab-panel[hidden] { display: none; }
 
 .signer-entropy { margin-top: 12px; font-size: 0.85em; }
 .signer-check { display: flex; align-items: center; gap: 6px; cursor: pointer; margin-top: 14px; }
@@ -112,7 +161,9 @@
 }
 
 .signer-nsec-row { display: flex; gap: 8px; align-items: center; }
-.signer-nsec-row input { flex: 1; }
+/* min-width:0 deja que el input se encoja por debajo de su contenido dentro del flex
+   (si no, un valor largo desborda y provoca scroll horizontal en móvil) */
+.signer-nsec-row input { flex: 1; min-width: 0; }
 .signer-nsec-row button { margin-top: 0; }
 .entropy-bar {
     flex: 1;
@@ -136,21 +187,19 @@
 
 .signer-bunker-hint { margin-top: 16px; }
 .signer-bunker-row { display: flex; gap: 8px; align-items: center; }
-.signer-bunker-row input { flex: 1; font-size: 0.8em; opacity: 0.85; }
+.signer-bunker-row input { flex: 1; min-width: 0; font-size: 0.8em; opacity: 0.85; }
 .signer-bunker-row button { margin-top: 0; }
 
 /* QR de la URI bunker:// (fondo blanco con margen: quiet zone para que escanee bien) */
 .signer-bunker-qr { margin-top: 12px; }
 .signer-bunker-qr img,
-.signer-bunker-qr canvas { background: #fff; padding: 10px; border-radius: 8px; }
+.signer-bunker-qr canvas { background: #fff; padding: 10px; border-radius: 8px;     margin: 0 auto;}
 
-/* Botonera del pairing + escáner QR con cámara */
-.signer-pair-actions { display: flex; gap: 10px; align-items: center; }
-.signer-pair-actions button { margin-top: 12px; }
+/* Botonera del pairing + escáner QR con cámara (apilada: ver "Grupos de botones") */
 #pair-qr-scanner,
 #setup-qr-scanner { margin-top: 12px; }
 #pair-scan-video,
-#setup-scan-video { max-width: 320px; }
+#setup-scan-video { max-width: 100%; }
 #pair-scan-video video,
 #setup-scan-video video { width: 100%; border-radius: 8px; }
 
@@ -182,7 +231,20 @@
     margin-bottom: 8px;
 }
 .signer-relays { font-size: 0.85em; opacity: 0.8; margin-bottom: 8px; }
-.signer-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+/* estado de conexión como barra global arriba del todo */
+#signer-main > #relay-status { margin: 0 0 14px; }
+
+/* (el layout de .signer-actions y .signer-id-switcher está en "Grupos de botones") */
+.signer-id-switcher { margin-bottom: 8px; }
+.signer-id-select {
+    width: 100%;
+    padding: 7px 10px;
+    border-radius: 6px;
+    border: 1px solid rgba(139, 92, 246, 0.35);
+    background: rgba(0,0,0,0.15);
+    color: inherit;
+    font-size: 0.9em;
+}
 
 .signer-danger-link { color: #e05555; cursor: pointer; font-size: 0.85em; }
 
@@ -192,8 +254,10 @@
     padding: 10px 12px;
     margin-bottom: 8px;
 }
-.signer-client-head { display: flex; gap: 10px; align-items: center; }
-.signer-client-name { font-weight: 700; }
+/* flex-wrap + overflow-wrap: un nombre de app largo (p.ej. una URL) no debe ensanchar
+   la página; envuelve a otra línea y parte si hace falta */
+.signer-client-head { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.signer-client-name { font-weight: 700; min-width: 0; overflow-wrap: anywhere; }
 .signer-client-pk { font-family: monospace; font-size: 0.8em; opacity: 0.6; }
 .signer-client-ren { margin-left: auto; cursor: pointer; font-size: 0.85em; opacity: 0.8; }
 .signer-client-x { color: #e05555; cursor: pointer; font-size: 0.85em; }
@@ -203,7 +267,7 @@
 
 .signer-empty { opacity: 0.6; font-size: 0.9em; }
 
-.signer-act { font-size: 0.85em; padding: 4px 0; border-bottom: 1px dashed rgba(139, 92, 246, 0.15); }
+.signer-act { font-size: 0.85em; padding: 4px 0; border-bottom: 1px dashed rgba(139, 92, 246, 0.15); overflow-wrap: anywhere; }
 .signer-act-time { opacity: 0.55; font-family: monospace; margin-right: 6px; }
 .act-rejected { color: #e05555; }
 
@@ -332,3 +396,5 @@
     line-height: 1;
 }
 #signer-a2hs-close:hover { color: #555; }
+
+#btn-pair-scan-stop {width: 100%;  }

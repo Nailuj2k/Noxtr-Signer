@@ -20,6 +20,11 @@ confirm, file named `signer-nsec-PLAIN-...json`) · *Both* · *Neither* =
 session-only (in memory while the tab is open, "Lock" forgets it; for shared
 machines).
 
+**Multiple identities:** several nsecs can be stored; one active at a time.
+Switch / add / rename / delete from "Your identity" (each keeps its own connected
+apps and activity). The active identity's profile name (kind 0) is fetched from
+the relays and shown as its label.
+
 **Recommended — install it on mobile (as an app):** open `signer.noxtr.net` on
 your phone and use **"Add to Home Screen"**. It runs full-screen like a native
 app, always within reach, and with *Browser* + *Remember on this device* the
@@ -67,6 +72,11 @@ re-entrar con "Cargar backup JSON"; con contraseña = wrapper AES-GCM + PBKDF2,
 sin contraseña = nsec EN CLARO, confirmación expresa, archivo
 `signer-nsec-PLAIN-...json`) · *Ambas* · *Ninguna* = solo sesión (en memoria
 mientras la pestaña esté abierta, "Bloquear" la olvida; para equipos ajenos).
+
+**Varias identidades:** se pueden guardar varios nsec; una activa cada vez.
+Cambiar / añadir / renombrar / eliminar desde "Tu identidad" (cada una mantiene
+sus apps conectadas y su actividad). El nombre de perfil (kind 0) de la identidad
+activa se obtiene de los relays y se muestra como etiqueta.
 
 **Recomendado — instálalo en el móvil (como app):** abre `signer.noxtr.net` en el
 móvil y usa **"Añadir a pantalla de inicio"**. Funciona a pantalla completa como
